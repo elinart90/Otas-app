@@ -30,12 +30,14 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
     { label: 'Dashboard', href: '/hod' },
     { label: 'Overview', href: '/hod/overview' },
     { label: 'Approvals', href: '/hod/approvals' },
+    { label: 'Audit log', href: '/hod/audit' },
   ],
   admin: [
     { label: 'Dashboard', href: '/admin' },
     { label: 'Users', href: '/admin/users' },
     { label: 'Departments', href: '/admin/departments' },
     { label: 'Archives', href: '/admin/archives' },
+    { label: 'Audit log', href: '/admin/audit' },
   ],
 };
 
