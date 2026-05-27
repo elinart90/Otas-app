@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { PageHeader } from '@/components/layout/dashboard-bits';
 import { StatusBadge } from '@/components/projects/status-badge';
 import { DecisionForm } from '@/components/projects/decision-form';
+import { SupervisorArchiveUpload } from '@/components/archive/supervisor-upload-form';
 import { createClient } from '@/lib/supabase/server';
 import type { ProjectStatus } from '@/lib/projects/schema';
 
@@ -42,6 +43,13 @@ export default async function SupervisorProjectDetail({
     docUrl = signed?.signedUrl ?? null;
   }
 
+  // Check if an archive already exists for this project (Phase 3.1)
+  const { data: existingArchive } = await supabase
+    .from('archives')
+    .select('id, archive_code')
+    .eq('project_id', project.id)
+    .maybeSingle();
+
   const status = project.status as ProjectStatus;
   const author = project.author as unknown as {
     full_name: string;
@@ -58,7 +66,28 @@ export default async function SupervisorProjectDetail({
       />
 
       <div className="space-y-5">
-        {/* Author card */}
+        {/* Archive upload card - shown only when ready to archive */}
+        {status === 'final_passed' && !existingArchive && (
+          <SupervisorArchiveUpload
+            projectId={project.id}
+            academicYear={project.academic_year}
+          />
+        )}
+
+        {/* Archived confirmation banner */}
+        {status === 'archived' && existingArchive && (
+          <div className="rounded-lg border border-success/30 bg-success/10 p-5">
+            <p className="text-sm font-semibold text-foreground">
+              In the institutional archive
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Archived as <strong>{existingArchive.archive_code}</strong>.
+              Browseable through the Archive page.
+            </p>
+          </div>
+        )}
+
+        {/* Author */}
         <section className="rounded-lg border border-border bg-card p-5">
           <h2 className="text-sm font-semibold text-foreground">Submitted by</h2>
           {author ? (
