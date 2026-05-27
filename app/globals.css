@@ -1,0 +1,135 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+   UMaT theme tokens
+   Primary:     Emerald green  (hsl 151 65% 30%) - growth, UMaT identity
+   Destructive: Scarlet red    (hsl   0 75% 45%) - bravery, also error state
+   Warning:     Golden yellow  (hsl  42 95% 55%) - gold, used for in-progress
+   Info:        Sky blue       (hsl 205 80% 50%) - serenity, informational
+   Neutrals:    warm-tinted greys that pair with green
+   ============================================================================ */
+
+@layer base {
+  :root {
+    /* Surfaces */
+    --background: 60 20% 99%;
+    --foreground: 151 25% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 151 25% 10%;
+
+    /* Primary = UMaT emerald */
+    --primary: 151 65% 30%;
+    --primary-foreground: 60 20% 99%;
+    --primary-muted: 151 50% 92%;
+
+    /* Secondary surfaces */
+    --secondary: 151 20% 96%;
+    --secondary-foreground: 151 25% 15%;
+
+    /* Muted surfaces */
+    --muted: 151 15% 94%;
+    --muted-foreground: 151 12% 40%;
+
+    /* Accent / hover hint */
+    --accent: 151 30% 92%;
+    --accent-foreground: 151 30% 18%;
+
+    /* Destructive = scarlet */
+    --destructive: 0 75% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Status (used in badges) */
+    --warning: 42 95% 50%;
+    --warning-foreground: 42 90% 15%;
+    --info: 205 80% 45%;
+    --info-foreground: 0 0% 100%;
+    --success: 151 65% 30%;
+    --success-foreground: 0 0% 100%;
+
+    /* Borders + inputs */
+    --border: 151 15% 88%;
+    --input: 151 15% 88%;
+    --ring: 151 65% 30%;
+
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    --background: 151 25% 6%;
+    --foreground: 60 15% 95%;
+    --card: 151 22% 8%;
+    --card-foreground: 60 15% 95%;
+
+    --primary: 151 55% 50%;
+    --primary-foreground: 151 30% 8%;
+    --primary-muted: 151 40% 14%;
+
+    --secondary: 151 20% 12%;
+    --secondary-foreground: 60 15% 95%;
+
+    --muted: 151 18% 14%;
+    --muted-foreground: 151 12% 65%;
+
+    --accent: 151 25% 16%;
+    --accent-foreground: 60 15% 95%;
+
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 42 90% 55%;
+    --warning-foreground: 42 90% 10%;
+    --info: 205 75% 55%;
+    --info-foreground: 0 0% 100%;
+    --success: 151 55% 50%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 151 18% 18%;
+    --input: 151 18% 18%;
+    --ring: 151 55% 50%;
+  }
+
+  * {
+    @apply border-border;
+  }
+  html, body {
+    @apply bg-background text-foreground;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+    color: hsl(var(--foreground));
+  }
+}
+
+@layer components {
+  .pill {
+    @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium;
+  }
+  .pill-success {
+    background: hsl(var(--success) / 0.12);
+    color: hsl(var(--success));
+    border-color: hsl(var(--success) / 0.25);
+  }
+  .pill-warning {
+    background: hsl(var(--warning) / 0.18);
+    color: hsl(var(--warning-foreground));
+    border-color: hsl(var(--warning) / 0.4);
+  }
+  .pill-info {
+    background: hsl(var(--info) / 0.12);
+    color: hsl(var(--info));
+    border-color: hsl(var(--info) / 0.25);
+  }
+  .pill-destructive {
+    background: hsl(var(--destructive) / 0.12);
+    color: hsl(var(--destructive));
+    border-color: hsl(var(--destructive) / 0.25);
+  }
+  .pill-muted {
+    background: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+    border-color: hsl(var(--border));
+  }
+}
