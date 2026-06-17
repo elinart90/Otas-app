@@ -24,7 +24,7 @@ export default async function SupervisorSupervisionPage() {
     .order('session_date', { ascending: false })
     .limit(100);
 
-  const list = (sessions ?? []) as Array<{
+  const list = (sessions ?? []) as unknown as Array<{
     id: string;
     session_date: string;
     agenda: string;

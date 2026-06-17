@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { SkeletonCard } from '@/components/layout/dashboard-bits';
 import { CriterionRow, type Criterion } from './criterion-row';
 
 type Score = {
@@ -123,8 +124,9 @@ export function ScoringForm({
 
   if (loading) {
     return (
-      <div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-        Loading rubric…
+      <div className="space-y-3">
+        <SkeletonCard lines={4} />
+        <SkeletonCard lines={4} />
       </div>
     );
   }

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { isValidRole } from '@/lib/rbac/permissions';
 import { Sidebar } from '@/components/layout/sidebar';
+import { TopHeader } from '@/components/layout/top-header';
 
 export default async function DashboardLayout({
   children,
@@ -25,12 +26,21 @@ export default async function DashboardLayout({
     redirect('/register/complete');
   }
 
+  const userName = profile.full_name ?? 'User';
+
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar role={profile.role} userName={profile.full_name ?? 'User'} />
-      <main className="flex-1 overflow-y-auto bg-secondary/30">
-        <div className="mx-auto max-w-6xl p-6">{children}</div>
-      </main>
+      <Sidebar role={profile.role} userName={userName} />
+
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <TopHeader role={profile.role} userName={userName} />
+
+        <main className="flex-1 overflow-y-auto bg-secondary/30">
+          <div className="p-6">
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

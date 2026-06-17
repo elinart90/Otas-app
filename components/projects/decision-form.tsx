@@ -3,7 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-export function DecisionForm({ projectId }: { projectId: string }) {
+export function DecisionForm({
+  projectId,
+  title = 'Supervisor decision',
+}: {
+  projectId: string;
+  title?: string;
+}) {
   const router = useRouter();
   const [mode, setMode] = useState<'idle' | 'rejecting'>('idle');
   const [reason, setReason] = useState('');
@@ -81,7 +87,7 @@ export function DecisionForm({ projectId }: { projectId: string }) {
 
   return (
     <div className="rounded-lg border border-border bg-card p-5">
-      <h3 className="text-sm font-semibold text-foreground">Supervisor decision</h3>
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
       <p className="mt-1 text-xs text-muted-foreground">
         Approve or reject this proposal. Rejecting requires a reason.
       </p>

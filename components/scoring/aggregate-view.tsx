@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { aggregateScores, type Criterion as ACriterion, type Score, type DefenseAggregate } from '@/lib/scoring/aggregate';
+import { SkeletonCard } from '@/components/layout/dashboard-bits';
 import type { Criterion } from './criterion-row';
 
 type Panelist = { id: string; full_name: string };
@@ -49,11 +50,7 @@ export function AggregateView({
   }, [defenseId, panelists]);
 
   if (loading) {
-    return (
-      <div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-        Loading scores…
-      </div>
-    );
+    return <SkeletonCard lines={5} />;
   }
 
   if (!aggregate || aggregate.per_panelist.every((p) => !p.submitted)) {

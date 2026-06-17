@@ -57,7 +57,7 @@ export default async function HodDefenseDetail({
     supervisor: { full_name: string } | null;
     author: { full_name: string; index_number: string | null } | null;
   } | null;
-  const panel = (defense.panel ?? []) as Array<{
+  const panel = (defense.panel ?? []) as unknown as Array<{
     panelist_id: string;
     users: { id: string; full_name: string; email: string; role: string } | null;
   }>;

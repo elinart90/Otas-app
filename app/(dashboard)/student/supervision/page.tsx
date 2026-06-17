@@ -44,7 +44,7 @@ export default async function StudentSupervisionPage() {
       )
       .in('project_id', projectIds)
       .order('session_date', { ascending: false });
-    sessions = (data ?? []) as typeof sessions;
+    sessions = (data ?? []) as unknown as typeof sessions;
   }
 
   return (

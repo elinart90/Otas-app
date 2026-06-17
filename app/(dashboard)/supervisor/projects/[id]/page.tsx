@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/layout/dashboard-bits';
 import { StatusBadge } from '@/components/projects/status-badge';
 import { DecisionForm } from '@/components/projects/decision-form';
 import { SupervisorArchiveUpload } from '@/components/archive/supervisor-upload-form';
+import { ProjectChat } from '@/components/messaging/project-chat';
 import { createClient } from '@/lib/supabase/server';
 import type { ProjectStatus } from '@/lib/projects/schema';
 
@@ -157,6 +158,13 @@ export default async function SupervisorProjectDetail({
         {status === 'proposal_submitted' && (
           <DecisionForm projectId={project.id} />
         )}
+
+        {/* ── Project chat ── */}
+        <ProjectChat
+          projectId={project.id}
+          currentUserId={user.id}
+          isSupervisor={true}
+        />
 
         <div>
           <Link

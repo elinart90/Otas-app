@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { PageHeader, EmptyCard } from '@/components/layout/dashboard-bits';
+import { PageHeader, EmptyCard, SkeletonCard } from '@/components/layout/dashboard-bits';
 import { SearchFilters } from './search-filters';
 import { ArchiveCard, type ArchiveCardData } from './archive-card';
 
@@ -75,8 +75,10 @@ export function ArchiveBrowser({
         />
 
         {loading ? (
-          <div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-            Searching…
+          <div className="space-y-3">
+            <SkeletonCard lines={3} />
+            <SkeletonCard lines={3} />
+            <SkeletonCard lines={2} />
           </div>
         ) : archives.length === 0 ? (
           <EmptyCard

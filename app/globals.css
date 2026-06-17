@@ -11,6 +11,12 @@
    Neutrals:    warm-tinted greys that pair with green
    ============================================================================ */
 
+/* Keyframes must live OUTSIDE @layer to avoid PostCSS compilation issues */
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 @layer base {
   :root {
     /* Surfaces */
@@ -131,5 +137,25 @@
     background: hsl(var(--muted));
     color: hsl(var(--muted-foreground));
     border-color: hsl(var(--border));
+  }
+
+  /* Solid emerald fill — for primary-context badges (distinct from pill-success) */
+  .pill-primary {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+  }
+
+  /* Animated shimmer bar — use as loading placeholder */
+  .skeleton {
+    border-radius: calc(var(--radius) - 2px);
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted))         0%,
+      hsl(var(--secondary))    50%,
+      hsl(var(--muted))       100%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s ease-in-out infinite;
   }
 }

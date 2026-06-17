@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { PageHeader } from '@/components/layout/dashboard-bits';
 import { StatusBadge } from '@/components/projects/status-badge';
 import { StageBadge } from '@/components/defense/stage-badge';
+import { ProjectChat } from '@/components/messaging/project-chat';
 import { createClient } from '@/lib/supabase/server';
 import type { ProjectStatus } from '@/lib/projects/schema';
 
@@ -56,6 +57,23 @@ export default async function StudentProjectDetail({
     email: string;
   } | null;
 
+  // Parse rejection reason embedded into the abstract by the approval API
+  const REJECTION_MARKER = '\n\n— Supervisor rejection reason (';
+  const rawAbstract = project.abstract ?? '';
+  const markerIdx = rawAbstract.indexOf(REJECTION_MARKER);
+  let displayAbstract = rawAbstract;
+  let rejectionReason: string | null = null;
+  let rejectionDate: string | null = null;
+  if (markerIdx !== -1) {
+    displayAbstract = rawAbstract.slice(0, markerIdx);
+    const rest = rawAbstract.slice(markerIdx + REJECTION_MARKER.length);
+    const dateEnd = rest.indexOf('):\n');
+    if (dateEnd !== -1) {
+      rejectionDate = rest.slice(0, dateEnd);
+      rejectionReason = rest.slice(dateEnd + 3);
+    }
+  }
+
   return (
     <>
       <PageHeader
@@ -68,7 +86,7 @@ export default async function StudentProjectDetail({
         {/* Status banners */}
         {status === 'proposal_submitted' && (
           <div className="rounded-lg border border-info/30 bg-info/10 p-4 text-sm text-info-foreground">
-            <strong>Awaiting supervisor review.</strong>
+            <strong>Awaiting supervisor review.</strong> Your supervisor will approve or reject your proposal.
           </div>
         )}
         {status === 'proposal_approved' && (
@@ -77,8 +95,22 @@ export default async function StudentProjectDetail({
           </div>
         )}
         {status === 'proposal_rejected' && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-            <strong>Proposal rejected.</strong> See feedback in the abstract below.
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+            <p className="text-sm font-semibold text-destructive">Proposal rejected</p>
+            {rejectionReason ? (
+              <>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {rejectionDate ? `Feedback recorded on ${rejectionDate}` : 'Supervisor feedback'}
+                </p>
+                <p className="mt-2 whitespace-pre-line text-sm text-foreground">
+                  {rejectionReason}
+                </p>
+              </>
+            ) : (
+              <p className="mt-1 text-sm text-muted-foreground">
+                See feedback in the abstract below and revise your proposal.
+              </p>
+            )}
           </div>
         )}
 
@@ -141,7 +173,7 @@ export default async function StudentProjectDetail({
         <section className="rounded-lg border border-border bg-card p-5">
           <h2 className="text-sm font-semibold text-foreground">Abstract</h2>
           <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-            {project.abstract}
+            {displayAbstract || 'No abstract provided.'}
           </p>
         </section>
 
@@ -192,6 +224,13 @@ export default async function StudentProjectDetail({
             </a>
           </section>
         )}
+
+        {/* ── Project chat ── */}
+        <ProjectChat
+          projectId={project.id}
+          currentUserId={user.id}
+          isSupervisor={false}
+        />
 
         <div>
           <Link

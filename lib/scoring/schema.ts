@@ -1,8 +1,16 @@
 import { z } from 'zod';
+import {
+  DefenseScoreSubmitSchema,
+  HodDecisionSchema,
+  HodDecisionEnum,
+} from '@/lib/validation/defense-schema';
+import type {
+  DefenseScoreSubmitInput,
+  HodDecisionInput,
+} from '@/lib/validation/defense-schema';
 
-/**
- * Single criterion score submission.
- */
+// CriterionScoreSchema has no standalone equivalent in the validation layer.
+// `comment` is singular — matches the defense_scores.comment DB column.
 export const CriterionScoreSchema = z.object({
   criterion_id: z.string().uuid(),
   score: z
@@ -18,30 +26,17 @@ export const CriterionScoreSchema = z.object({
     .transform((v) => (v ? v.trim() : null)),
 });
 
-/**
- * Full scoring submission for a defense by a single panelist.
- * `submit` flag: if true, scores are locked after this write.
- */
-export const ScoreSubmissionSchema = z.object({
-  scores: z.array(CriterionScoreSchema).min(1, 'Score at least one criterion'),
-  submit: z.boolean().default(false),
-});
+// Re-export validation-layer schemas under legacy names
+export {
+  DefenseScoreSubmitSchema as ScoreSubmissionSchema,
+  HodDecisionSchema as DecisionSchema,
+  HodDecisionEnum,
+};
 
-export type ScoreSubmissionInput = z.infer<typeof ScoreSubmissionSchema>;
+// Legacy type aliases
+export type ScoreSubmissionInput = DefenseScoreSubmitInput;
+export type DecisionInput = HodDecisionInput;
 
-/**
- * HoD's final pass/fail decision.
- */
-export const DECISION_VALUES = ['passed', 'failed'] as const;
-export type DecisionValue = (typeof DECISION_VALUES)[number];
-
-export const DecisionSchema = z.object({
-  decision: z.enum(DECISION_VALUES),
-  notes: z
-    .string()
-    .min(20, 'Provide reasoning of at least 20 characters')
-    .max(2000, 'Notes are too long')
-    .trim(),
-});
-
-export type DecisionInput = z.infer<typeof DecisionSchema>;
+// Const array and type kept for backwards compatibility
+export const DECISION_VALUES = HodDecisionEnum.options;
+export type DecisionValue = z.infer<typeof HodDecisionEnum>;

@@ -42,11 +42,11 @@ export function ArchiveCard({
   return (
     <Link
       href={`${hrefBase}/${archive.id}`}
-      className="block rounded-lg border border-border bg-card p-5 transition-colors hover:bg-secondary"
+      className="group block rounded-lg border border-border bg-card p-5 shadow-card transition-all duration-150 hover:border-primary/25 hover:shadow-elevated"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h3 className="text-base font-semibold text-foreground">
+          <h3 className="text-base font-semibold text-foreground transition-colors duration-150 group-hover:text-primary">
             {archive.title}
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -56,7 +56,7 @@ export function ArchiveCard({
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5">
-          <span className="pill pill-muted">{code}</span>
+          <span className="pill pill-muted font-mono">{code}</span>
           {hasDoc ? (
             <span className="pill pill-success">PDF available</span>
           ) : (
@@ -66,7 +66,7 @@ export function ArchiveCard({
       </div>
 
       {excerpt && (
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
           {excerpt}
         </p>
       )}
@@ -76,7 +76,7 @@ export function ArchiveCard({
           {archive.keywords.slice(0, 6).map((k) => (
             <span
               key={k}
-              className="inline-flex items-center rounded-full bg-secondary px-2.5 py-0.5 text-xs text-muted-foreground"
+              className="inline-flex items-center rounded-full bg-primary-muted px-2.5 py-0.5 text-xs font-medium text-primary"
             >
               {k}
             </span>

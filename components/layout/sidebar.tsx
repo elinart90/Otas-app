@@ -2,49 +2,74 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import {
+  LayoutDashboard,
+  FolderOpen,
+  Search,
+  ShieldCheck,
+  CalendarDays,
+  Archive,
+  ClipboardList,
+  Users,
+  Building2,
+  ScrollText,
+  GraduationCap,
+  CheckCircle2,
+  LogOut,
+  type LucideIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { UserRole } from '@/lib/rbac/permissions';
 import { Logo } from './logo';
 
-type NavItem = { label: string; href: string };
+type NavItem = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+};
 
 const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   student: [
-    { label: 'Dashboard', href: '/student' },
-    { label: 'My project', href: '/student/project' },
-    { label: 'Title check', href: '/student/similarity' },
-    { label: 'Plagiarism', href: '/student/plagiarism' },
-    { label: 'Supervision', href: '/student/supervision' },
-    { label: 'Archive', href: '/student/archive' },
+    { label: 'Dashboard',   href: '/student',             icon: LayoutDashboard },
+    { label: 'My project',  href: '/student/project',     icon: FolderOpen      },
+    { label: 'Title check', href: '/student/similarity',  icon: Search          },
+    { label: 'Plagiarism',  href: '/student/plagiarism',  icon: ShieldCheck     },
+    { label: 'Supervision', href: '/student/supervision', icon: CalendarDays    },
+    { label: 'Archive',     href: '/student/archive',     icon: Archive         },
   ],
   supervisor: [
-    { label: 'Dashboard', href: '/supervisor' },
-    { label: 'Projects', href: '/supervisor/projects' },
-    { label: 'Supervision', href: '/supervisor/supervision' },
+    { label: 'Dashboard',   href: '/supervisor',             icon: LayoutDashboard },
+    { label: 'Projects',    href: '/supervisor/projects',    icon: FolderOpen      },
+    { label: 'Supervision', href: '/supervisor/supervision', icon: CalendarDays    },
+    { label: 'Archive',     href: '/supervisor/archive',     icon: Archive         },
   ],
   panel: [
-    { label: 'Dashboard', href: '/panel' },
-    { label: 'Assessments', href: '/panel/assessment' },
+    { label: 'Dashboard',   href: '/panel',            icon: LayoutDashboard },
+    { label: 'Assessments', href: '/panel/assessment', icon: ClipboardList   },
+    { label: 'Archive',     href: '/panel/archive',    icon: Archive         },
   ],
   hod: [
-    { label: 'Dashboard', href: '/hod' },
-    { label: 'Overview', href: '/hod/overview' },
-    { label: 'Approvals', href: '/hod/approvals' },
+    { label: 'Dashboard',          href: '/hod',           icon: LayoutDashboard },
+    { label: 'Defense overview',   href: '/hod/overview',  icon: GraduationCap   },
+    { label: 'Proposal approvals', href: '/hod/approvals', icon: CheckCircle2    },
+    { label: 'Archive',            href: '/hod/archive',   icon: Archive         },
+    { label: 'Audit log',          href: '/hod/audit',     icon: ScrollText      },
   ],
   admin: [
-    { label: 'Dashboard', href: '/admin' },
-    { label: 'Users', href: '/admin/users' },
-    { label: 'Departments', href: '/admin/departments' },
-    { label: 'Archives', href: '/admin/archives' },
+    { label: 'Dashboard',   href: '/admin',             icon: LayoutDashboard },
+    { label: 'Users',       href: '/admin/users',       icon: Users           },
+    { label: 'Departments', href: '/admin/departments', icon: Building2       },
+    { label: 'Archives',    href: '/admin/archives',    icon: Archive         },
+    { label: 'Audit log',   href: '/admin/audit',       icon: ScrollText      },
   ],
 };
 
 const ROLE_LABEL: Record<UserRole, string> = {
-  student: 'Student',
+  student:    'Student',
   supervisor: 'Supervisor',
-  panel: 'Panel member',
-  hod: 'HoD / Coordinator',
-  admin: 'Administrator',
+  panel:      'Panel member',
+  hod:        'HoD / Coordinator',
+  admin:      'Administrator',
 };
 
 export function Sidebar({
@@ -58,41 +83,55 @@ export function Sidebar({
   const items = NAV_BY_ROLE[role];
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-border bg-card">
-      {/* Brand */}
-      <div className="flex h-16 items-center gap-2 border-b border-border px-5">
-        <Logo size={32} showWordmark />
+    <aside className="flex h-screen w-64 flex-col bg-[#0e3d28]">
+
+      {/* ── Brand ──────────────────────────────────────────────────── */}
+      <div className="flex h-16 shrink-0 items-center gap-3 px-5">
+        {/* The shield SVG has a white upper half — pops on dark green */}
+        <Logo size={34} />
+        <div className="flex flex-col leading-tight">
+          <span className="text-[15px] font-bold tracking-tight text-white">OTAS</span>
+          <span className="text-[10px] font-medium uppercase tracking-widest text-white/40">UMaT</span>
+        </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto p-3">
-        <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      {/* ── Navigation ─────────────────────────────────────────────── */}
+      <nav className="flex-1 overflow-y-auto px-3 py-3" aria-label="Main navigation">
+        <p className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-widest text-white/35">
           {ROLE_LABEL[role]}
         </p>
+
         <ul className="space-y-0.5">
           {items.map((item) => {
             const active =
               item.href === pathname ||
               (item.href !== `/${role}` && pathname.startsWith(item.href));
+            const Icon = item.icon;
+
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   className={cn(
-                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                    'group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
                     active
-                      ? 'bg-primary-muted text-primary font-medium'
-                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                      ? 'bg-white/15 text-white shadow-sm'
+                      : 'text-white/60 hover:bg-white/8 hover:text-white/90'
                   )}
                 >
-                  <span
+                  <Icon
                     className={cn(
-                      'h-1.5 w-1.5 rounded-full transition-colors',
-                      active ? 'bg-primary' : 'bg-transparent'
+                      'h-4 w-4 shrink-0 transition-colors duration-150',
+                      active ? 'text-white' : 'text-white/45 group-hover:text-white/80'
                     )}
                     aria-hidden
                   />
                   {item.label}
+
+                  {/* Active dot indicator */}
+                  {active && (
+                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white/60" aria-hidden />
+                  )}
                 </Link>
               </li>
             );
@@ -100,26 +139,30 @@ export function Sidebar({
         </ul>
       </nav>
 
-      {/* User card */}
-      <div className="border-t border-border p-3">
-        <div className="flex items-center gap-3 rounded-md bg-secondary px-3 py-2">
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold">
+      {/* ── User section ───────────────────────────────────────────── */}
+      <div className="shrink-0 border-t border-white/10 p-4 space-y-3">
+        {/* Avatar + name + role */}
+        <div className="flex items-center gap-3 rounded-lg bg-white/8 px-3 py-2.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white">
             {userName?.charAt(0)?.toUpperCase() ?? '?'}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-foreground">
+            <p className="truncate text-sm font-semibold text-white">
               {userName}
             </p>
-            <p className="truncate text-xs text-muted-foreground">
+            <p className="truncate text-xs text-white/50">
               {ROLE_LABEL[role]}
             </p>
           </div>
         </div>
-        <form action="/api/auth/logout" method="post" className="mt-2">
+
+        {/* Sign out */}
+        <form action="/api/auth/logout" method="post">
           <button
             type="submit"
-            className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm text-foreground hover:bg-secondary"
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-white/55 transition-colors duration-150 hover:bg-white/10 hover:text-white/90"
           >
+            <LogOut className="h-4 w-4 shrink-0" aria-hidden />
             Sign out
           </button>
         </form>

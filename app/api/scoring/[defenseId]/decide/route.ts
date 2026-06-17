@@ -40,7 +40,7 @@ export async function POST(
       { status: 400 }
     );
   }
-  const { decision, notes } = parsed.data;
+  const { decision, decision_notes } = parsed.data;
 
   const { data: defense } = await supabase
     .from('defense_sessions')
@@ -88,7 +88,7 @@ export async function POST(
     .from('defense_sessions')
     .update({
       hod_decision: decision,
-      decision_notes: notes,
+      decision_notes: decision_notes,
       decided_at: now,
       status: 'completed',
     })

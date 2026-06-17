@@ -1,16 +1,32 @@
-import { z } from 'zod';
+import {
+  DefenseStageEnum,
+  DefenseStatusEnum,
+  DefenseScheduleSchema,
+} from '@/lib/validation/defense-schema';
+import type {
+  DefenseScheduleInput,
+  DefenseStage,
+  DefenseStatus,
+} from '@/lib/validation/defense-schema';
 
-export const DEFENSE_STAGES = ['synopsis', 'final'] as const;
-export type DefenseStage = (typeof DEFENSE_STAGES)[number];
+// Re-export new canonical symbols from the validation layer
+export {
+  DefenseScheduleSchema,
+  DefenseScheduleSchema as DefenseCreateSchema,
+  DefenseStageEnum,
+  DefenseStatusEnum,
+};
 
-export const DEFENSE_STATUSES = [
-  'scheduled',
-  'in_progress',
-  'completed',
-  'cancelled',
-] as const;
-export type DefenseStatus = (typeof DEFENSE_STATUSES)[number];
+export type { DefenseScheduleInput, DefenseStage, DefenseStatus };
 
+// Legacy alias so existing imports of DefenseCreateInput continue to work
+export type DefenseCreateInput = DefenseScheduleInput;
+
+// Const arrays derived from enums for backwards compatibility
+export const DEFENSE_STAGES = DefenseStageEnum.options;
+export const DEFENSE_STATUSES = DefenseStatusEnum.options;
+
+// UI labels not present in the validation layer — kept here
 export const STAGE_LABEL: Record<DefenseStage, string> = {
   synopsis: 'Synopsis defense',
   final: 'Final defense',
@@ -22,31 +38,3 @@ export const STATUS_LABEL: Record<DefenseStatus, string> = {
   completed: 'Completed',
   cancelled: 'Cancelled',
 };
-
-/**
- * Schedule a new defense session.
- * Panel constraints: 2-4 unique panelist IDs.
- */
-export const DefenseCreateSchema = z.object({
-  project_id: z.string().uuid('Select a project'),
-  stage: z.enum(DEFENSE_STAGES),
-  scheduled_at: z
-    .string()
-    .min(1, 'Scheduled date/time is required')
-    .refine((s) => !isNaN(Date.parse(s)), 'Invalid date/time'),
-  venue: z
-    .string()
-    .min(2, 'Venue is required')
-    .max(200, 'Venue is too long')
-    .trim(),
-  panelist_ids: z
-    .array(z.string().uuid())
-    .min(2, 'A defense panel must have at least 2 members')
-    .max(4, 'A defense panel can have at most 4 members')
-    .refine(
-      (ids) => new Set(ids).size === ids.length,
-      'Duplicate panel members are not allowed'
-    ),
-});
-
-export type DefenseCreateInput = z.infer<typeof DefenseCreateSchema>;
