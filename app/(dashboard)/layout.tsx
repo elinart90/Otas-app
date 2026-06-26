@@ -18,7 +18,7 @@ export default async function DashboardLayout({
 
   const { data: profile } = await supabase
     .from('users')
-    .select('role, full_name')
+    .select('role, full_name, avatar_url')
     .eq('id', user.id)
     .single();
 
@@ -27,13 +27,14 @@ export default async function DashboardLayout({
   }
 
   const userName = profile.full_name ?? 'User';
+  const avatarUrl = profile.avatar_url ?? null;
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar role={profile.role} userName={userName} />
+      <Sidebar role={profile.role} userName={userName} avatarUrl={avatarUrl} />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopHeader role={profile.role} userName={userName} />
+        <TopHeader role={profile.role} userName={userName} avatarUrl={avatarUrl} />
 
         <main className="flex-1 overflow-y-auto bg-secondary/30">
           <div className="p-6">

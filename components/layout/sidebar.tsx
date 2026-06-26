@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
@@ -75,9 +76,11 @@ const ROLE_LABEL: Record<UserRole, string> = {
 export function Sidebar({
   role,
   userName,
+  avatarUrl,
 }: {
   role: UserRole;
   userName: string;
+  avatarUrl?: string | null;
 }) {
   const pathname = usePathname();
   const items = NAV_BY_ROLE[role];
@@ -143,8 +146,20 @@ export function Sidebar({
       <div className="shrink-0 border-t border-white/10 p-4 space-y-3">
         {/* Avatar + name + role */}
         <div className="flex items-center gap-3 rounded-lg bg-white/8 px-3 py-2.5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white">
-            {userName?.charAt(0)?.toUpperCase() ?? '?'}
+          <div className="h-9 w-9 shrink-0 rounded-full overflow-hidden">
+            {avatarUrl ? (
+              <Image
+                src={avatarUrl}
+                alt={userName}
+                width={36}
+                height={36}
+                className="h-9 w-9 object-cover"
+              />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white">
+                {userName?.charAt(0)?.toUpperCase() ?? '?'}
+              </div>
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-white">

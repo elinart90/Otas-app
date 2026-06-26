@@ -1,38 +1,21 @@
-import { Bell, Search, ChevronDown } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import type { UserRole } from '@/lib/rbac/permissions';
-
-const ROLE_LABEL: Record<UserRole, string> = {
-  student:    'Student',
-  supervisor: 'Supervisor',
-  panel:      'Panel member',
-  hod:        'HoD / Coordinator',
-  admin:      'Administrator',
-};
+import { UserMenu } from './user-menu';
+import { SearchBar } from './search-bar';
 
 export function TopHeader({
   userName,
   role,
+  avatarUrl,
 }: {
   userName: string;
   role: UserRole;
+  avatarUrl: string | null;
 }) {
-  const initials = userName
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-4 border-b border-border bg-card px-6">
-      {/* ── Search bar (cosmetic placeholder) ─────────────────────── */}
-      <div className="flex max-w-sm flex-1 items-center gap-2 rounded-lg border border-input bg-secondary px-3 py-2 text-sm text-muted-foreground">
-        <Search className="h-4 w-4 shrink-0" aria-hidden />
-        <span className="flex-1 select-none">Search anything...</span>
-        <kbd className="hidden rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] sm:inline">
-          ⌘K
-        </kbd>
-      </div>
+      {/* ── Search bar ─────────────────────────────────────────────── */}
+      <SearchBar role={role} />
 
       {/* ── Right side ─────────────────────────────────────────────── */}
       <div className="flex items-center gap-3">
@@ -43,19 +26,8 @@ export function TopHeader({
           <span className="sr-only">Notifications</span>
         </div>
 
-        {/* User profile pill */}
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground shadow-sm">
-            {initials}
-          </div>
-          <div className="hidden sm:block">
-            <p className="text-sm font-semibold leading-tight text-foreground">
-              {userName}
-            </p>
-            <p className="text-xs text-muted-foreground">{ROLE_LABEL[role]}</p>
-          </div>
-          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-        </div>
+        {/* User profile dropdown */}
+        <UserMenu userName={userName} role={role} avatarUrl={avatarUrl} />
       </div>
     </header>
   );

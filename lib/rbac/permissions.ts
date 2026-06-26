@@ -54,6 +54,9 @@ export function canAccess(role: UserRole | null, pathname: string): boolean {
   // Shared cross-role read-only pages (archive viewer)
   if (pathname.startsWith('/archive/')) return true;
 
+  // Shared profile and settings page accessible to all authenticated users
+  if (pathname.startsWith('/profile')) return true;
+
   const allowed = ROLE_ROUTES[role] ?? [];
   return allowed.some((prefix) => pathname.startsWith(prefix));
 }
