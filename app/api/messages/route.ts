@@ -4,77 +4,103 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/messages?project_id=<uuid>
-//
-// Returns all messages for a project, ordered oldest-first.
-// Also marks unread messages from the OTHER party as read (server-side,
-// via admin client so RLS doesn't block the update).
+// GET /api/messages?group_id=<uuid>  (preferred — group-based thread)
+//     /api/messages?project_id=<uuid> (legacy — per-project thread)
 // ─────────────────────────────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
   }
 
+  const groupId   = request.nextUrl.searchParams.get('group_id');
   const projectId = request.nextUrl.searchParams.get('project_id');
-  if (!projectId) {
-    return NextResponse.json({ ok: false, error: 'project_id is required' }, { status: 400 });
+
+  if (!groupId && !projectId) {
+    return NextResponse.json(
+      { ok: false, error: 'group_id or project_id is required' },
+      { status: 400 }
+    );
   }
 
-  // Verify the caller is a participant (student or supervisor) for this project
+  const adminDb = createAdminClient();
+
+  if (groupId) {
+    // Verify the caller is a member or the supervisor of this group
+    const [{ data: member }, { data: group }] = await Promise.all([
+      adminDb.from('student_group_members').select('user_id').eq('group_id', groupId).eq('user_id', user.id).maybeSingle(),
+      adminDb.from('student_groups').select('supervisor_id').eq('id', groupId).single(),
+    ]);
+    const isMember     = !!member;
+    const isSupervisor = group?.supervisor_id === user.id;
+    if (!isMember && !isSupervisor) {
+      return NextResponse.json(
+        { ok: false, error: 'You are not a participant in this group' },
+        { status: 403 }
+      );
+    }
+
+    const { data: messages, error } = await adminDb
+      .from('project_messages')
+      .select(`id, content, is_action, is_read, created_at,
+               sender:sender_id(id, full_name, role)`)
+      .eq('group_id', groupId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+
+    // Mark messages from others as read (fire-and-forget)
+    const unreadIds = (messages ?? [])
+      .filter((m) => {
+        const sender = m.sender as unknown as { id: string } | null;
+        return !m.is_read && sender?.id !== user.id;
+      })
+      .map((m) => m.id);
+    if (unreadIds.length > 0) {
+      adminDb.from('project_messages').update({ is_read: true }).in('id', unreadIds).then(() => {});
+    }
+
+    return NextResponse.json({ ok: true, messages: messages ?? [] });
+  }
+
+  // Legacy: project-scoped thread
   const { data: project, error: projectErr } = await supabase
     .from('projects')
     .select('id, created_by, supervisor_id')
-    .eq('id', projectId)
+    .eq('id', projectId!)
     .single();
-
   if (projectErr || !project) {
     return NextResponse.json({ ok: false, error: 'Project not found' }, { status: 404 });
   }
-
-  const isParticipant =
-    project.created_by === user.id || project.supervisor_id === user.id;
-
-  if (!isParticipant) {
+  if (project.created_by !== user.id && project.supervisor_id !== user.id) {
     return NextResponse.json(
       { ok: false, error: 'You are not a participant in this project' },
       { status: 403 }
     );
   }
 
-  // Use admin client so message reads work regardless of RLS SELECT policies
-  const adminDb = createAdminClient();
   const { data: messages, error } = await adminDb
     .from('project_messages')
-    .select(
-      `id, content, is_action, is_read, created_at,
-       sender:sender_id(id, full_name, role)`
-    )
-    .eq('project_id', projectId)
+    .select(`id, content, is_action, is_read, created_at,
+             sender:sender_id(id, full_name, role)`)
+    .eq('project_id', projectId!)
     .order('created_at', { ascending: true });
 
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 
-  // Mark messages from the OTHER party as read (fire-and-forget)
   const unreadIds = (messages ?? [])
     .filter((m) => {
       const sender = m.sender as unknown as { id: string } | null;
       return !m.is_read && sender?.id !== user.id;
     })
     .map((m) => m.id);
-
   if (unreadIds.length > 0) {
-    // Non-blocking — fire and forget so the response is fast
-    adminDb
-      .from('project_messages')
-      .update({ is_read: true })
-      .in('id', unreadIds)
-      .then(() => {/* silent */});
+    adminDb.from('project_messages').update({ is_read: true }).in('id', unreadIds).then(() => {});
   }
 
   return NextResponse.json({ ok: true, messages: messages ?? [] });
@@ -82,37 +108,33 @@ export async function GET(request: NextRequest) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/messages
-//
-// Sends a message on a project thread.
-// Only students and supervisors are allowed.
-// Students cannot set is_action = true.
+// Body: { group_id?, project_id?, content, is_action }
 // ─────────────────────────────────────────────────────────────────────────────
 const SendSchema = z.object({
-  project_id: z.string().uuid('Invalid project ID'),
+  group_id: z.string().uuid().optional(),
+  project_id: z.string().uuid().optional(),
   content: z
     .string()
     .min(1, 'Message cannot be empty')
     .max(4000, 'Message too long (max 4000 characters)')
     .transform((s) => s.trim()),
   is_action: z.boolean().default(false),
+}).refine((d) => d.group_id || d.project_id, {
+  message: 'group_id or project_id is required',
 });
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
   }
 
-  // Role check — only students and supervisors can message
   const { data: profile } = await supabase
     .from('users')
     .select('role')
     .eq('id', user.id)
     .single();
-
   if (!profile || !['student', 'supervisor'].includes(profile.role)) {
     return NextResponse.json(
       { ok: false, error: 'Only students and supervisors can send messages' },
@@ -120,7 +142,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Parse body
   let body: unknown;
   try {
     body = await request.json();
@@ -136,9 +157,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { project_id, content, is_action } = parsed.data;
+  const { group_id, project_id, content, is_action } = parsed.data;
 
-  // Students cannot pin action items
   if (is_action && profile.role === 'student') {
     return NextResponse.json(
       { ok: false, error: 'Only supervisors can create action items' },
@@ -146,20 +166,45 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Explicitly verify the caller is a participant in this project
+  const admin = createAdminClient();
+
+  if (group_id) {
+    // Verify membership or supervisor role
+    const [{ data: member }, { data: group }] = await Promise.all([
+      admin.from('student_group_members').select('user_id').eq('group_id', group_id).eq('user_id', user.id).maybeSingle(),
+      admin.from('student_groups').select('supervisor_id').eq('id', group_id).single(),
+    ]);
+    if (!member && group?.supervisor_id !== user.id) {
+      return NextResponse.json(
+        { ok: false, error: 'You are not a participant in this group' },
+        { status: 403 }
+      );
+    }
+
+    const { data: msg, error } = await admin
+      .from('project_messages')
+      .insert({ group_id, sender_id: user.id, content, is_action })
+      .select(`id, content, is_action, is_read, created_at,
+               sender:sender_id(id, full_name, role)`)
+      .single();
+
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, message: msg }, { status: 201 });
+  }
+
+  // Legacy: project-scoped
   const { data: project, error: projectErr } = await supabase
     .from('projects')
     .select('id, created_by, supervisor_id')
-    .eq('id', project_id)
+    .eq('id', project_id!)
     .single();
-
   if (projectErr || !project) {
     return NextResponse.json({ ok: false, error: 'Project not found' }, { status: 404 });
   }
-
   const isProjectStudent    = profile.role === 'student'    && project.created_by   === user.id;
   const isProjectSupervisor = profile.role === 'supervisor' && project.supervisor_id === user.id;
-
   if (!isProjectStudent && !isProjectSupervisor) {
     return NextResponse.json(
       { ok: false, error: 'You are not a participant in this project' },
@@ -167,22 +212,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Use admin client for the insert — we have already verified access above.
-  // This avoids RLS evaluation issues while keeping the explicit check above
-  // as the real gate (same pattern used in scoring/decide and archive routes).
-  const admin = createAdminClient();
   const { data: msg, error } = await admin
     .from('project_messages')
-    .insert({ project_id, sender_id: user.id, content, is_action })
-    .select(
-      `id, content, is_action, is_read, created_at,
-       sender:sender_id(id, full_name, role)`
-    )
+    .insert({ project_id: project_id!, sender_id: user.id, content, is_action })
+    .select(`id, content, is_action, is_read, created_at,
+             sender:sender_id(id, full_name, role)`)
     .single();
 
   if (error) {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
-
   return NextResponse.json({ ok: true, message: msg }, { status: 201 });
 }

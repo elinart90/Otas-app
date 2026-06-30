@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import {
   FolderOpen, CalendarDays, GraduationCap,
-  Search, ShieldCheck, Archive, Plus, ArrowRight,
+  Search, ShieldCheck, Archive, Plus, ArrowRight, UsersRound,
 } from 'lucide-react';
 import { PageHeader, StatCard, EmptyCard } from '@/components/layout/dashboard-bits';
 import { StatusBadge } from '@/components/projects/status-badge';
@@ -65,7 +65,7 @@ export default async function StudentDashboard() {
   if (!user) return null;
 
   const [{ data: profile }, { data: project }] = await Promise.all([
-    supabase.from('users').select('full_name').eq('id', user.id).single(),
+    supabase.from('users').select('full_name, is_group_leader').eq('id', user.id).single(),
     supabase
       .from('projects')
       .select('id, title, status')
@@ -76,6 +76,7 @@ export default async function StudentDashboard() {
   ]);
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Student';
+  const isGroupLeader = profile?.is_group_leader ?? false;
 
   let sessionsCount = 0;
   let latestDefense: {
@@ -122,6 +123,16 @@ export default async function StudentDashboard() {
   const status = (project?.status ?? 'draft') as ProjectStatus;
 
   const quickLinks = [
+    {
+      icon: UsersRound,
+      label: isGroupLeader ? 'Create your group' : 'My group',
+      description: isGroupLeader
+        ? 'You are a group leader — select a group number and confirm members.'
+        : 'View your project group and members.',
+      href: '/student/group',
+      accent: 'bg-primary/10 text-primary',
+      border: 'hover:border-primary/30',
+    },
     {
       icon: Search,
       label: 'Title similarity check',

@@ -25,7 +25,7 @@ export default async function SupervisorProjectDetail({
     .from('projects')
     .select(
       `id, title, abstract, keywords, academic_year, status,
-       created_at, proposal_doc_url, supervisor_id,
+       created_at, proposal_doc_url, supervisor_id, group_id,
        author:created_by(full_name, email, index_number)`
     )
     .eq('id', params.id)
@@ -159,9 +159,10 @@ export default async function SupervisorProjectDetail({
           <DecisionForm projectId={project.id} />
         )}
 
-        {/* ── Project chat ── */}
+        {/* ── Group / Project chat ── */}
         <ProjectChat
-          projectId={project.id}
+          groupId={(project.group_id as string | null) ?? undefined}
+          projectId={(project.group_id as string | null) ? undefined : project.id}
           currentUserId={user.id}
           isSupervisor={true}
         />

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import {
   Users, FolderOpen, Archive, Clock,
   Building2, ScrollText, ArrowRight,
-  UserPlus, Plus, Upload, Search,
+  UserPlus, Plus, Upload, Search, UsersRound,
 } from 'lucide-react';
 import { StatCard } from '@/components/layout/dashboard-bits';
 import { createClient } from '@/lib/supabase/server';
@@ -144,10 +144,10 @@ export default async function AdminDashboard() {
   ] as const;
 
   const quickActions = [
-    { label: 'Add new user',        href: '/admin/users',       icon: UserPlus  },
-    { label: 'Create department',   href: '/admin/departments', icon: Building2 },
-    { label: 'Add programme',       href: '/admin/departments', icon: Plus      },
-    { label: 'Upload to archive',   href: '/admin/archives',    icon: Upload    },
+    { label: 'Add new user',        href: '/admin/users',       icon: UserPlus   },
+    { label: 'Manage groups',       href: '/admin/groups',      icon: UsersRound },
+    { label: 'Create department',   href: '/admin/departments', icon: Building2  },
+    { label: 'Upload to archive',   href: '/admin/archives',    icon: Upload     },
   ] as const;
 
   const systemStats = [

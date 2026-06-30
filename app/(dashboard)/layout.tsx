@@ -34,7 +34,7 @@ export default async function DashboardLayout({
       <Sidebar role={profile.role} userName={userName} avatarUrl={avatarUrl} />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <TopHeader role={profile.role} userName={userName} avatarUrl={avatarUrl} />
+        <TopHeader role={profile.role} userName={userName} avatarUrl={avatarUrl} userId={user.id} />
 
         <main className="flex-1 overflow-y-auto bg-secondary/30">
           <div className="p-6">

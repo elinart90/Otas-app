@@ -74,11 +74,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<TitleChec
       id: row.id,
       title: row.projects?.title ?? '',
       year: row.year,
+      isArchived: true, // boost: officially archived projects carry 20% extra weight
     })),
     ...(projectsRes.data ?? []).map((row: any) => ({
       id: row.id,
       title: row.title,
       year: row.academic_year,
+      isArchived: row.status === 'archived',
     })),
   ].filter((c) => c.title);
 

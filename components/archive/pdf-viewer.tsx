@@ -51,6 +51,23 @@ export function PdfViewer({
   const [workerReady, setWorkerReady] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  // Block download/print/source keyboard shortcuts while the viewer is mounted.
+  // This is belt-and-braces: the canvas render already bypasses the native PDF
+  // download UI, but we also intercept the common keyboard paths.
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey) {
+        const k = e.key.toLowerCase();
+        if (['s', 'p', 'u', 'a'].includes(k)) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKey, true);
+    return () => window.removeEventListener('keydown', handleKey, true);
+  }, []);
+
   // Configure the PDF.js worker exactly once. We do this client-side because
   // pdfjs-dist resolves differently in SSR vs browser.
   useEffect(() => {

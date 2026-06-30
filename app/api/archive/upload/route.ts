@@ -193,11 +193,13 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase
     .from('projects')
     .select(
-      `id, title, status, academic_year,
+      `id, title, status, academic_year, group_id,
        author:created_by(full_name),
+       members:project_members(role_in_team, user:user_id(full_name)),
        archives:archives(id, archive_code, document_url)`
     )
     .in('status', ['final_passed', 'archived'])
+    .eq('is_seed', false)
     .order('academic_year', { ascending: false })
     .order('created_at', { ascending: false });
   if (error) {

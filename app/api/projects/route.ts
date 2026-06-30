@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { ProposalCreateSchema } from '@/lib/projects/schema';
 import { checkTitle } from '@/lib/similarity/title-check';
+import { sendNotification } from '@/lib/notifications/send';
 
 const MAX_FILE_BYTES = 15 * 1024 * 1024; // 15 MB for proposals (can be a draft chapter)
 const TITLE_BLOCK_THRESHOLD = 0.75;
@@ -32,6 +34,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { ok: false, error: 'Only students may submit proposals' },
       { status: 403 }
+    );
+  }
+
+  // Require caller to be the group leader
+  const adminDb0 = createAdminClient();
+  const { data: leaderMembership } = await adminDb0
+    .from('student_group_members')
+    .select('group_id, is_leader')
+    .eq('user_id', user.id)
+    .eq('is_leader', true)
+    .maybeSingle();
+  if (!leaderMembership) {
+    return NextResponse.json(
+      { ok: false, error: 'Only the group leader may submit the group proposal' },
+      { status: 403 }
+    );
+  }
+
+  // Prevent duplicate proposal for the same group
+  const { data: existingGroupProject } = await adminDb0
+    .from('projects')
+    .select('id')
+    .eq('group_id', leaderMembership.group_id)
+    .maybeSingle();
+  if (existingGroupProject) {
+    return NextResponse.json(
+      { ok: false, error: 'Your group already has a submitted proposal' },
+      { status: 409 }
     );
   }
 
@@ -67,13 +97,14 @@ export async function POST(request: NextRequest) {
   // from clients that try to bypass the live check.
   const { data: archives } = await supabase
     .from('projects')
-    .select('id, title, academic_year')
+    .select('id, title, academic_year, status')
     .neq('status', 'draft')
     .neq('created_by', user.id);
   const corpus = (archives ?? []).map((row) => ({
     id: row.id,
     title: row.title,
     year: row.academic_year,
+    isArchived: row.status === 'archived',
   }));
   const titleCheck = checkTitle(input.title, corpus, 5);
   if (titleCheck.highestScore >= TITLE_BLOCK_THRESHOLD) {
@@ -146,6 +177,7 @@ export async function POST(request: NextRequest) {
       status: 'proposal_submitted',
       proposal_doc_url: proposalDocPath,
       created_by: user.id,
+      group_id: leaderMembership.group_id,
     })
     .select('id')
     .single();
@@ -161,11 +193,29 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Also add the creator as a project_member with role 'lead'
-  await supabase.from('project_members').insert({
+  // Auto-add all current group members as project_members
+  const { data: groupMemberRows } = await adminDb0
+    .from('student_group_members')
+    .select('user_id, is_leader')
+    .eq('group_id', leaderMembership.group_id);
+
+  const projectMemberRows = (groupMemberRows ?? []).map((m) => ({
     project_id: project.id,
-    user_id: user.id,
-    role_in_team: 'lead',
+    user_id: m.user_id,
+    role_in_team: m.is_leader ? 'lead' : 'member',
+  }));
+  if (projectMemberRows.length > 0) {
+    await adminDb0.from('project_members').insert(projectMemberRows);
+  }
+
+  // Notify the supervisor that a proposal awaits their review
+  await sendNotification({
+    userId: input.supervisor_id,
+    type: 'proposal_submitted',
+    title: 'New proposal submitted for your review',
+    body: `A student has submitted a proposal titled "${input.title}". Please review it on your dashboard.`,
+    link: `/supervisor/projects/${project.id}`,
+    emailData: { title: input.title, projectId: project.id },
   });
 
   return NextResponse.json({ ok: true, projectId: project.id });
@@ -203,7 +253,16 @@ export async function GET() {
 
   // Role-based filtering
   if (profile.role === 'student') {
-    query = query.eq('created_by', user.id);
+    // Return all projects where the student is a member (covers group submissions)
+    const { data: memberOf } = await supabase
+      .from('project_members')
+      .select('project_id')
+      .eq('user_id', user.id);
+    const projectIds = (memberOf ?? []).map((m) => m.project_id);
+    if (projectIds.length === 0) {
+      return NextResponse.json({ ok: true, projects: [] });
+    }
+    query = query.in('id', projectIds);
   } else if (profile.role === 'supervisor') {
     query = query.eq('supervisor_id', user.id);
   }

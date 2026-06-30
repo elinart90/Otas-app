@@ -13,6 +13,12 @@ const ROLE_ROUTES: Record<UserRole, string[]> = {
 };
 
 /**
+ * Route prefixes accessible to non-final-year students (levels 100-300).
+ * They can use tools but cannot access the full project workflow.
+ */
+const RESTRICTED_STUDENT_ROUTES = ['/student/tools'];
+
+/**
  * Default landing page for each role after successful login.
  */
 export const ROLE_HOME: Record<UserRole, string> = {
@@ -23,16 +29,29 @@ export const ROLE_HOME: Record<UserRole, string> = {
   admin: '/admin',
 };
 
+/** Home for non-final-year students. */
+export const RESTRICTED_STUDENT_HOME = '/student/tools';
+
 /**
- * Returns true if the role is permitted to access the given path.
- * Public paths and the landing root are always allowed.
- *
- * API routes (under /api/*) are handled specially: they pass the middleware
- * path check as long as the user is authenticated, because each route does
- * its own role/permission checks internally. This lets cross-role API calls
- * (e.g. a student calling /api/similarity/title) succeed without exposing
- * them to bypass — the routes themselves enforce who can do what.
+ * Returns true if a non-final-year student can access the given path.
  */
+export function canAccessAsRestrictedStudent(pathname: string): boolean {
+  if (
+    pathname === '/' ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/register') ||
+    pathname.startsWith('/unauthorized') ||
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/archive/') ||
+    pathname.startsWith('/profile')
+  ) {
+    return true;
+  }
+  return RESTRICTED_STUDENT_ROUTES.some((prefix) => pathname.startsWith(prefix));
+}
+
 export function canAccess(role: UserRole | null, pathname: string): boolean {
   // Public routes
   if (

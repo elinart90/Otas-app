@@ -43,5 +43,11 @@ export async function loginAction(
     redirect('/register/complete');
   }
 
+  // Support ?redirect= for external links like /browse/[id] → /archive/[id]
+  const redirectTo = formData.get('redirectUrl');
+  if (typeof redirectTo === 'string' && redirectTo.startsWith('/')) {
+    redirect(redirectTo);
+  }
+
   redirect(ROLE_HOME[profile.role]);
 }

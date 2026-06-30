@@ -20,11 +20,11 @@ type FacultyConfig = {
 };
 
 const FACULTY_CONFIG: Record<string, FacultyConfig> = {
-  'Faculty of Computing and Mathematical Sciences': {
-    short: 'FCMS', icon: Monitor,
-    border: 'border-l-info',
-    iconStyle: 'bg-info/10 text-info',
-    labelStyle: 'text-info',
+  'Faculty of Mining and Minerals Technology': {
+    short: 'FMMT', icon: HardHat,
+    border: 'border-l-destructive',
+    iconStyle: 'bg-destructive/10 text-destructive',
+    labelStyle: 'text-destructive',
   },
   'Faculty of Engineering': {
     short: 'FoE', icon: Zap,
@@ -32,11 +32,11 @@ const FACULTY_CONFIG: Record<string, FacultyConfig> = {
     iconStyle: 'bg-warning/15 text-warning-foreground',
     labelStyle: 'text-warning-foreground',
   },
-  'Faculty of Mining and Minerals Technology': {
-    short: 'FMMT', icon: HardHat,
-    border: 'border-l-destructive',
-    iconStyle: 'bg-destructive/10 text-destructive',
-    labelStyle: 'text-destructive',
+  'Faculty of Computing and Mathematical Sciences': {
+    short: 'FCMS', icon: Monitor,
+    border: 'border-l-info',
+    iconStyle: 'bg-info/10 text-info',
+    labelStyle: 'text-info',
   },
   'Faculty of Geosciences and Environmental Studies': {
     short: 'FGES', icon: Globe,
@@ -50,7 +50,7 @@ const FACULTY_CONFIG: Record<string, FacultyConfig> = {
     iconStyle: 'bg-primary-muted text-primary',
     labelStyle: 'text-primary',
   },
-  'School of Petroleum Studies': {
+  'GNPC School of Petroleum Studies': {
     short: 'SPS', icon: Flame,
     border: 'border-l-warning',
     iconStyle: 'bg-warning/15 text-warning-foreground',
@@ -67,12 +67,12 @@ const FALLBACK_CONFIG: FacultyConfig = {
 
 // Canonical display order
 const FACULTY_ORDER = [
-  'Faculty of Computing and Mathematical Sciences',
-  'Faculty of Engineering',
   'Faculty of Mining and Minerals Technology',
+  'Faculty of Engineering',
+  'Faculty of Computing and Mathematical Sciences',
   'Faculty of Geosciences and Environmental Studies',
   'Faculty of Integrated Management Science',
-  'School of Petroleum Studies',
+  'GNPC School of Petroleum Studies',
 ];
 
 // ── Types ────────────────────────────────────────────────────
@@ -90,7 +90,7 @@ export default async function AdminDepartmentsPage() {
     { data: departments, error: deptErr },
     { data: programmes,  error: progErr  },
   ] = await Promise.all([
-    supabase.from('departments').select('id, name, code, description').order('name'),
+    supabase.from('departments').select('id, name, code, description, faculty').order('name'),
     supabase.from('programmes').select('id, name, code, department_id').order('name'),
   ]);
 
@@ -103,7 +103,7 @@ export default async function AdminDepartmentsPage() {
   }
 
   const deptRows = (departments ?? []) as Array<{
-    id: string; name: string; code: string | null; description: string | null;
+    id: string; name: string; code: string | null; description: string | null; faculty: string | null;
   }>;
   const progRows = (programmes ?? []) as Array<{
     id: string; name: string; code: string | null; department_id: string;
@@ -114,10 +114,10 @@ export default async function AdminDepartmentsPage() {
     programmes: progRows.filter((p) => p.department_id === d.id),
   }));
 
-  // Group by faculty (description field)
+  // Group by faculty column (fall back to description for legacy rows)
   const facultyMap = new Map<string, DepartmentRow[]>();
   for (const dept of deptWithProgs) {
-    const faculty = dept.description ?? 'Other';
+    const faculty = (dept as { faculty?: string | null }).faculty ?? dept.description ?? 'Other';
     if (!facultyMap.has(faculty)) facultyMap.set(faculty, []);
     facultyMap.get(faculty)!.push(dept);
   }

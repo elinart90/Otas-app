@@ -1,6 +1,13 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { canAccess, isValidRole, ROLE_HOME, type UserRole } from '@/lib/rbac/permissions';
+import {
+  canAccess,
+  canAccessAsRestrictedStudent,
+  isValidRole,
+  ROLE_HOME,
+  RESTRICTED_STUDENT_HOME,
+  type UserRole,
+} from '@/lib/rbac/permissions';
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -38,7 +45,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/login') ||
     pathname.startsWith('/register') ||
     pathname.startsWith('/unauthorized') ||
-    pathname.startsWith('/api/auth');
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/browse') ||             // public archive browse
+    pathname.startsWith('/api/archive/public');   // public archive API
 
   // Not authenticated
   if (!user) {
@@ -70,9 +79,31 @@ export async function middleware(request: NextRequest) {
     if (profile && isValidRole(profile.role)) role = profile.role;
   }
 
+  // Determine if a student is final-year (stored in metadata at registration).
+  // Non-final-year students (levels 100-300) get a restricted route set.
+  // If metadata doesn't have is_final_year yet (pre-migration accounts), fall back to DB.
+  let isRestrictedStudent = false;
+  if (role === 'student') {
+    const metaFinalYear = user.user_metadata?.is_final_year;
+    if (typeof metaFinalYear === 'boolean') {
+      isRestrictedStudent = !metaFinalYear;
+    } else {
+      // DB fallback for accounts created before migration 015
+      const { data: studentProfile } = await supabase
+        .from('users')
+        .select('is_final_year')
+        .eq('id', user.id)
+        .single();
+      isRestrictedStudent = studentProfile?.is_final_year === false;
+    }
+  }
+
+  const effectiveHome =
+    isRestrictedStudent ? RESTRICTED_STUDENT_HOME : (role ? ROLE_HOME[role] : '/');
+
   // If logged in but visiting login/register, send to their dashboard
   if (role && (pathname.startsWith('/login') || pathname.startsWith('/register'))) {
-    return NextResponse.redirect(new URL(ROLE_HOME[role], request.url));
+    return NextResponse.redirect(new URL(effectiveHome, request.url));
   }
 
   // Authenticated but no profile yet -> force them to complete registration
@@ -87,14 +118,22 @@ export async function middleware(request: NextRequest) {
   }
 
   // Authorization check (page routes only — API routes self-enforce)
-  if (role && !canAccess(role, pathname)) {
-    if (isApi) {
-      return NextResponse.json(
-        { ok: false, error: 'Forbidden' },
-        { status: 403 }
+  if (role) {
+    const allowed = isRestrictedStudent
+      ? canAccessAsRestrictedStudent(pathname)
+      : canAccess(role, pathname);
+
+    if (!allowed) {
+      if (isApi) {
+        return NextResponse.json(
+          { ok: false, error: 'Forbidden' },
+          { status: 403 }
+        );
+      }
+      return NextResponse.redirect(
+        new URL(isRestrictedStudent ? RESTRICTED_STUDENT_HOME : '/unauthorized', request.url)
       );
     }
-    return NextResponse.redirect(new URL('/unauthorized', request.url));
   }
 
   return response;

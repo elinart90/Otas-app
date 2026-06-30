@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import {
-  FolderOpen, ClipboardList, CalendarDays, Archive, Plus,
+  FolderOpen, ClipboardList, CalendarDays, Archive, Plus, UsersRound, Crown,
 } from 'lucide-react';
 import { PageHeader, StatCard, EmptyCard } from '@/components/layout/dashboard-bits';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,12 +19,26 @@ export default async function SupervisorDashboard() {
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
 
-  const [{ count: totalCount }, { count: pendingCount }, { count: sessionsCount }] =
-    await Promise.all([
-      supabase.from('projects').select('*', { count: 'exact', head: true }).eq('supervisor_id', user.id),
-      supabase.from('projects').select('*', { count: 'exact', head: true }).eq('supervisor_id', user.id).eq('status', 'proposal_submitted'),
-      supabase.from('supervisions').select('*', { count: 'exact', head: true }).eq('supervisor_id', user.id).gte('session_date', startOfMonth.toISOString()),
-    ]);
+  const admin = createAdminClient();
+
+  const [
+    { count: totalCount },
+    { count: pendingCount },
+    { count: sessionsCount },
+    { data: assignedGroups },
+  ] = await Promise.all([
+    supabase.from('projects').select('*', { count: 'exact', head: true }).eq('supervisor_id', user.id),
+    supabase.from('projects').select('*', { count: 'exact', head: true }).eq('supervisor_id', user.id).eq('status', 'proposal_submitted'),
+    supabase.from('supervisions').select('*', { count: 'exact', head: true }).eq('supervisor_id', user.id).gte('session_date', startOfMonth.toISOString()),
+    admin
+      .from('student_groups')
+      .select(`
+        id, group_number, academic_year,
+        student_group_members(is_leader, users(full_name, index_number))
+      `)
+      .eq('supervisor_id', user.id)
+      .order('academic_year', { ascending: false }),
+  ]);
 
   const quickLinks = [
     ...(pendingCount
@@ -109,11 +124,57 @@ export default async function SupervisorDashboard() {
         })}
       </div>
 
-      {!pendingCount && !sessionsCount && (
+      {/* Assigned groups */}
+      {assignedGroups && assignedGroups.length > 0 && (
+        <div className="mt-6">
+          <p className="mb-3 text-sm font-semibold text-foreground">
+            Assigned groups ({assignedGroups.length})
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {assignedGroups.map((group) => {
+              const members = (group.student_group_members as unknown as {
+                is_leader: boolean;
+                users: { full_name: string; index_number: string } | null;
+              }[]) ?? [];
+              const leader = members.find((m) => m.is_leader)?.users;
+              return (
+                <div
+                  key={group.id}
+                  className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 shadow-card"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary">
+                      {group.group_number}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        Group {group.group_number}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{group.academic_year}</p>
+                    </div>
+                  </div>
+                  {leader && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Crown className="h-3.5 w-3.5 text-primary" />
+                      Leader: <span className="text-foreground">{leader.full_name}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <UsersRound className="h-3.5 w-3.5" />
+                    {members.length} member{members.length !== 1 ? 's' : ''}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!pendingCount && !sessionsCount && (!assignedGroups || assignedGroups.length === 0) && (
         <div className="mt-4">
           <EmptyCard
             title="All caught up"
-            body="No pending proposals. Once supervision sessions begin, they'll appear here."
+            body="No pending proposals or assigned groups yet. Check back once the admin assigns you to groups."
           />
         </div>
       )}

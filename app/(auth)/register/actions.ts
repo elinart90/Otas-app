@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ROLE_HOME } from '@/lib/rbac/permissions';
+import { isFinalYear } from '@/lib/student-level';
 
 const INDEX_REGEX = /^[A-Z]{2,6}\.\d{2}\.\d{3}\.\d{3}\.\d{2}$/;
 const ROLES_NEEDING_DEPT = new Set(['student', 'supervisor', 'hod']);
@@ -79,11 +80,33 @@ export async function registerAction(
 
   const supabase = createClient();
 
+  const finalYear =
+    parsed.data.role === 'student' && parsed.data.indexNumber
+      ? isFinalYear(parsed.data.indexNumber)
+      : null;
+
+  // Pre-check roster before creating auth user (admin client needed — no auth yet)
+  let isGroupLeaderEarly = false;
+  if (parsed.data.role === 'student' && parsed.data.indexNumber) {
+    const adminPre = createAdminClient();
+    const { data: rosterCheck } = await adminPre
+      .from('admin_group_roster')
+      .select('leader_index')
+      .eq('leader_index', parsed.data.indexNumber)
+      .maybeSingle();
+    isGroupLeaderEarly = !!rosterCheck;
+  }
+
   const { data: signUp, error: signUpError } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      data: { role: parsed.data.role, full_name: parsed.data.fullName },
+      data: {
+        role: parsed.data.role,
+        full_name: parsed.data.fullName,
+        ...(finalYear !== null ? { is_final_year: finalYear } : {}),
+        ...(isGroupLeaderEarly ? { is_group_leader: true } : {}),
+      },
     },
   });
 
@@ -101,6 +124,8 @@ export async function registerAction(
     programme_id: parsed.data.programmeId || null,
     index_number: parsed.data.indexNumber || null,
     staff_id: parsed.data.staffId || null,
+    ...(finalYear !== null ? { is_final_year: finalYear } : {}),
+    ...(isGroupLeaderEarly ? { is_group_leader: true } : {}),
   });
 
   if (profileError) {

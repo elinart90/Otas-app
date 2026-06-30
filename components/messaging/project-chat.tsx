@@ -60,12 +60,15 @@ function initials(name: string): string {
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
+// Accepts groupId (preferred, group-scoped) or projectId (legacy per-project).
 export function ProjectChat({
+  groupId,
   projectId,
   currentUserId,
   isSupervisor,
 }: {
-  projectId: string;
+  groupId?: string;
+  projectId?: string;
   currentUserId: string;
   isSupervisor: boolean;
 }) {
@@ -80,18 +83,22 @@ export function ProjectChat({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const threadParam = groupId
+    ? `group_id=${groupId}`
+    : `project_id=${projectId}`;
+
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchMessages = useCallback(
     async (initial = false) => {
       try {
-        const res = await fetch(`/api/messages?project_id=${projectId}`);
+        const res = await fetch(`/api/messages?${threadParam}`);
         const data = await res.json();
         if (data.ok) setMessages(data.messages ?? []);
       } finally {
         if (initial) setLoading(false);
       }
     },
-    [projectId]
+    [threadParam]
   );
 
   useEffect(() => {
@@ -114,14 +121,13 @@ export function ProjectChat({
     setSending(true);
     setError(null);
     try {
+      const threadBody = groupId
+        ? { group_id: groupId, content: trimmed, is_action: isAction }
+        : { project_id: projectId, content: trimmed, is_action: isAction };
       const res = await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          project_id: projectId,
-          content: trimmed,
-          is_action: isAction,
-        }),
+        body: JSON.stringify(threadBody),
       });
       const data = await res.json();
       if (!data.ok) { setError(data.error ?? 'Send failed'); return; }
@@ -153,9 +159,13 @@ export function ProjectChat({
             <MessageSquare className="h-4 w-4 text-primary" aria-hidden />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Project chat</p>
+            <p className="text-sm font-semibold text-foreground">
+              {groupId ? 'Group chat' : 'Project chat'}
+            </p>
             <p className="text-xs text-muted-foreground">
-              {isSupervisor ? 'Guidance for your student' : 'Messages from your supervisor'}
+              {isSupervisor
+                ? groupId ? 'Group thread — all members can read' : 'Guidance for your student'
+                : groupId ? 'Shared thread with your supervisor and group' : 'Messages from your supervisor'}
             </p>
           </div>
           {unreadCount > 0 && (
@@ -193,10 +203,10 @@ export function ProjectChat({
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">No messages yet</p>
-              <p className="mt-1 max-w-[22ch] text-xs text-muted-foreground">
+              <p className="mt-1 max-w-[26ch] text-xs text-muted-foreground">
                 {isSupervisor
-                  ? 'Send comments, feedback, or action items to your student.'
-                  : 'Your supervisor can send comments and action items here.'}
+                  ? 'Send comments, feedback, or action items to the group.'
+                  : 'Your supervisor and group members can chat here.'}
               </p>
             </div>
           </div>

@@ -3,7 +3,7 @@ import {
   FolderOpen, CalendarDays, GraduationCap,
   Search, ShieldCheck, Archive,
   Users, Building2, ClipboardList, ArrowRight,
-  CheckCircle, BookOpen,
+  CheckCircle, BookOpen, Zap,
 } from 'lucide-react';
 import { Logo } from '@/components/layout/logo';
 
@@ -99,6 +99,12 @@ export default function Home() {
           <Logo size={36} showWordmark />
           <nav className="flex items-center gap-2">
             <Link
+              href="/browse"
+              className="hidden rounded-lg px-4 py-2 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-secondary sm:inline-flex"
+            >
+              Archive
+            </Link>
+            <Link
               href="/login"
               className="rounded-lg px-4 py-2 text-sm font-medium text-foreground transition-colors duration-150 hover:bg-secondary"
             >
@@ -188,6 +194,75 @@ export default function Home() {
               <p className="mt-1 text-sm text-muted-foreground">{s.label}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ── Quick Access (for all students, especially levels 100-300) ─── */}
+      <section className="border-b border-border bg-primary/[0.03] py-12">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="mb-8 flex items-center gap-3">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+              <Zap className="h-4 w-4 text-primary" />
+            </span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-primary">Quick Access</p>
+              <h2 className="text-xl font-bold text-foreground">Open tools — no project required</h2>
+            </div>
+          </div>
+          <p className="mb-6 max-w-xl text-sm text-muted-foreground">
+            These tools are available to all students at any level. Use them to research, check originality,
+            and explore past projects before your final year.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[
+              {
+                icon: Search,
+                title: 'Title Similarity Check',
+                body: 'Type a proposed title and instantly see how similar it is to past projects.',
+                href: '/register',
+                tone: 'info',
+              },
+              {
+                icon: ShieldCheck,
+                title: 'Plagiarism Screening',
+                body: 'Upload a document to check originality against the institutional archive.',
+                href: '/register',
+                tone: 'warning',
+              },
+              {
+                icon: Archive,
+                title: 'Browse Archive',
+                body: 'Search and read approved final-year projects from previous cohorts. No login needed to browse titles and abstracts.',
+                href: '/browse',
+                tone: 'success',
+              },
+            ].map((item) => {
+              const Icon = item.icon;
+              const styles = {
+                info:    { icon: 'bg-info/10 text-info',          ring: 'hover:border-info/30' },
+                warning: { icon: 'bg-warning/15 text-warning-foreground', ring: 'hover:border-warning/30' },
+                success: { icon: 'bg-success/10 text-success',    ring: 'hover:border-success/30' },
+              }[item.tone]!;
+              return (
+                <Link
+                  key={item.title}
+                  href={item.href}
+                  className={`group flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-card transition-all duration-150 hover:shadow-elevated ${styles.ring}`}
+                >
+                  <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${styles.icon}`} aria-hidden>
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{item.body}</p>
+                  </div>
+                  <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground group-hover:text-foreground">
+                    {item.href === '/browse' ? 'Browse now' : 'Sign in to access'} <ArrowRight className="h-3.5 w-3.5" />
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </section>
 

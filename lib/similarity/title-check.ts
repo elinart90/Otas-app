@@ -244,6 +244,8 @@ export type ArchiveTitle = {
   id: string;
   title: string;
   year: number | null;
+  /** Officially archived projects carry more weight — boost score by 20 %. */
+  isArchived?: boolean;
 };
 
 /**
@@ -264,10 +266,14 @@ export function checkTitle(
   }
 
   const matches: TitleMatch[] = corpus.map((entry) => {
-    const { score, jaroWinkler: jw, tokenSet: ts } = similarityScore(
+    const { score: rawScore, jaroWinkler: jw, tokenSet: ts } = similarityScore(
       proposed,
       entry.title
     );
+    // Officially archived projects carry a 20 % weight premium — a title that
+    // closely matches something already in the permanent archive is a stronger
+    // signal than a match against an in-flight submission.
+    const score = entry.isArchived ? Math.min(1, rawScore * 1.2) : rawScore;
     return {
       archiveId: entry.id,
       title: entry.title,

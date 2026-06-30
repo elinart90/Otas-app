@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { ProposalDecisionSchema } from '@/lib/projects/schema';
+import { sendNotification } from '@/lib/notifications/send';
 
 // =========================================================================
 // GET /api/projects/[id]
@@ -100,7 +101,7 @@ export async function PATCH(
   // Fetch the project to verify the supervisor relationship and status
   const { data: project, error: fetchErr } = await supabase
     .from('projects')
-    .select('id, supervisor_id, status, abstract')
+    .select('id, supervisor_id, status, abstract, created_by')
     .eq('id', params.id)
     .single();
   if (fetchErr || !project) {
@@ -141,6 +142,21 @@ export async function PATCH(
   if (updateErr) {
     return NextResponse.json({ ok: false, error: updateErr.message }, { status: 500 });
   }
+
+  // Notify the student (project owner) of the decision
+  const isApproved = parsed.data.decision === 'approve';
+  await sendNotification({
+    userId: project.created_by,
+    type: isApproved ? 'proposal_approved' : 'proposal_rejected',
+    title: isApproved
+      ? 'Your proposal has been approved!'
+      : 'Your proposal was not approved',
+    body: isApproved
+      ? 'Congratulations! Your supervisor has approved your project proposal. You may now proceed with your project work.'
+      : `Your supervisor has reviewed your proposal and requested changes. Reason: ${parsed.data.reason ?? 'See your project page for details.'}`,
+    link: `/student/projects/${params.id}`,
+    emailData: { projectId: params.id, decision: parsed.data.decision, reason: parsed.data.reason },
+  });
 
   return NextResponse.json({ ok: true, newStatus });
 }

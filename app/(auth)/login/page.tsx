@@ -1,6 +1,7 @@
 'use client';
 
 import { useFormState, useFormStatus } from 'react-dom';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Logo } from '@/components/layout/logo';
 import { loginAction, type LoginState } from './actions';
@@ -19,10 +20,9 @@ function SubmitButton() {
 }
 
 export default function LoginPage() {
-  const [state, action] = useFormState<LoginState, FormData>(
-    loginAction,
-    undefined
-  );
+  const [state, action] = useFormState<LoginState, FormData>(loginAction, undefined);
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect') ?? '';
 
   return (
     <main className="relative flex min-h-screen items-center justify-center px-4">
@@ -48,6 +48,9 @@ export default function LoginPage() {
         </div>
 
         <form action={action} className="space-y-4">
+          {redirectUrl && (
+            <input type="hidden" name="redirectUrl" value={redirectUrl} />
+          )}
           <div className="space-y-1.5">
             <label htmlFor="email" className="text-sm font-medium">
               Email

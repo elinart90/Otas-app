@@ -17,6 +17,7 @@ import {
   GraduationCap,
   CheckCircle2,
   LogOut,
+  UsersRound,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -32,6 +33,7 @@ type NavItem = {
 const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   student: [
     { label: 'Dashboard',   href: '/student',             icon: LayoutDashboard },
+    { label: 'My group',    href: '/student/group',       icon: UsersRound      },
     { label: 'My project',  href: '/student/project',     icon: FolderOpen      },
     { label: 'Title check', href: '/student/similarity',  icon: Search          },
     { label: 'Plagiarism',  href: '/student/plagiarism',  icon: ShieldCheck     },
@@ -59,6 +61,7 @@ const NAV_BY_ROLE: Record<UserRole, NavItem[]> = {
   admin: [
     { label: 'Dashboard',   href: '/admin',             icon: LayoutDashboard },
     { label: 'Users',       href: '/admin/users',       icon: Users           },
+    { label: 'Groups',      href: '/admin/groups',      icon: UsersRound      },
     { label: 'Departments', href: '/admin/departments', icon: Building2       },
     { label: 'Archives',    href: '/admin/archives',    icon: Archive         },
     { label: 'Audit log',   href: '/admin/audit',       icon: ScrollText      },

@@ -1,11 +1,14 @@
 import Link from 'next/link';
 
-// Supabase can return joined relationships as either an array OR a single
-// object depending on cardinality inference. Type both shapes here.
 type ArchiveRow = {
   id: string;
   archive_code: string;
   document_url: string;
+};
+
+type MemberRow = {
+  role_in_team: string;
+  user: { full_name: string; index_number?: string | null } | null;
 };
 
 export type ArchiveCardData = {
@@ -14,10 +17,25 @@ export type ArchiveCardData = {
   abstract: string | null;
   keywords: string[] | null;
   academic_year: number;
+  group_id?: string | null;
   programme: { name: string; code: string } | null;
   author: { full_name: string } | null;
+  members?: MemberRow | MemberRow[] | null;
   archives: ArchiveRow | ArchiveRow[] | null;
 };
+
+function memberNames(data: ArchiveCardData): string[] {
+  if (!data.members) return data.author?.full_name ? [data.author.full_name] : [];
+  const rows: MemberRow[] = Array.isArray(data.members) ? data.members : [data.members];
+  // Sort: lead first, then members alphabetically
+  const sorted = [...rows].sort((a, b) => {
+    if (a.role_in_team === 'lead' && b.role_in_team !== 'lead') return -1;
+    if (b.role_in_team === 'lead' && a.role_in_team !== 'lead') return 1;
+    return (a.user?.full_name ?? '').localeCompare(b.user?.full_name ?? '');
+  });
+  const names = sorted.map((r) => r.user?.full_name).filter(Boolean) as string[];
+  return names.length > 0 ? names : (data.author?.full_name ? [data.author.full_name] : []);
+}
 
 export function ArchiveCard({
   archive,
@@ -26,8 +44,6 @@ export function ArchiveCard({
   archive: ArchiveCardData;
   hrefBase: string;
 }) {
-  // Normalise the archives shape: Supabase returns it as either an object
-  // or a single-element array depending on relationship cardinality.
   const archiveRow: ArchiveRow | null = Array.isArray(archive.archives)
     ? archive.archives[0] ?? null
     : archive.archives ?? null;
@@ -38,6 +54,13 @@ export function ArchiveCard({
   const excerpt = archive.abstract
     ? archive.abstract.slice(0, 240) + (archive.abstract.length > 240 ? '…' : '')
     : null;
+
+  const authors = memberNames(archive);
+  const authorText = authors.length === 0
+    ? null
+    : authors.length <= 3
+      ? authors.join(', ')
+      : `${authors.slice(0, 2).join(', ')} +${authors.length - 2} more`;
 
   return (
     <Link
@@ -52,7 +75,7 @@ export function ArchiveCard({
           <p className="mt-1 text-xs text-muted-foreground">
             {archive.academic_year}
             {archive.programme?.code ? ` · ${archive.programme.code}` : ''}
-            {archive.author?.full_name ? ` · ${archive.author.full_name}` : ''}
+            {authorText ? ` · ${authorText}` : ''}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5">

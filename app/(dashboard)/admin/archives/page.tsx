@@ -6,14 +6,32 @@ import Link from 'next/link';
 import { PageHeader, EmptyCard } from '@/components/layout/dashboard-bits';
 import { cn } from '@/lib/utils';
 
+type MemberRow = { role_in_team: string; user: { full_name: string } | null };
+
 type Project = {
   id: string;
   title: string;
   status: 'final_passed' | 'archived';
   academic_year: number;
+  group_id: string | null;
   author: { full_name: string } | null;
+  members: MemberRow | MemberRow[] | null;
   archives: Array<{ id: string; archive_code: string; document_url: string }>;
 };
+
+function projectAuthorLabel(p: Project): string {
+  const rows: MemberRow[] = Array.isArray(p.members)
+    ? p.members
+    : p.members ? [p.members] : [];
+  const names = rows
+    .sort((a, b) => (a.role_in_team === 'lead' ? -1 : b.role_in_team === 'lead' ? 1 : 0))
+    .map((r) => r.user?.full_name)
+    .filter(Boolean) as string[];
+  if (names.length > 0) {
+    return names.length <= 2 ? names.join(', ') : `${names.slice(0, 2).join(', ')} +${names.length - 2}`;
+  }
+  return p.author?.full_name ?? 'Unknown';
+}
 
 export default function AdminArchivesPage() {
   const router = useRouter();
@@ -257,8 +275,7 @@ function ProjectRow({
           {project.title}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {project.academic_year}
-          {project.author?.full_name ? ` · ${project.author.full_name}` : ''}
+          {project.academic_year} · {projectAuthorLabel(project)}
         </p>
       </div>
       <div className="flex items-center gap-2">

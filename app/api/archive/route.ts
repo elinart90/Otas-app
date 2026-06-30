@@ -32,12 +32,14 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from('projects')
     .select(
-      `id, title, abstract, keywords, academic_year, created_at,
+      `id, title, abstract, keywords, academic_year, created_at, group_id,
        programme:programme_id(name, code),
        author:created_by(full_name),
+       members:project_members(role_in_team, user:user_id(full_name, index_number)),
        archives:archives(id, archive_code, document_url)`
     )
     .eq('status', 'archived')
+    .eq('is_seed', false)
     .order('academic_year', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(100);
@@ -63,6 +65,7 @@ export async function GET(request: NextRequest) {
     .from('projects')
     .select('academic_year')
     .eq('status', 'archived')
+    .eq('is_seed', false)
     .order('academic_year', { ascending: false });
   const distinctYears = Array.from(
     new Set((years ?? []).map((y) => y.academic_year))

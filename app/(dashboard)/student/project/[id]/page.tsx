@@ -5,6 +5,7 @@ import { StatusBadge } from '@/components/projects/status-badge';
 import { StageBadge } from '@/components/defense/stage-badge';
 import { ProjectChat } from '@/components/messaging/project-chat';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { ProjectStatus } from '@/lib/projects/schema';
 
 export const dynamic = 'force-dynamic';
@@ -20,15 +21,24 @@ export default async function StudentProjectDetail({
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // Verify the student is a member of this project's group (or the creator)
+  const adminDb = createAdminClient();
+  const { data: memberCheck } = await adminDb
+    .from('project_members')
+    .select('project_id')
+    .eq('project_id', params.id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (!memberCheck) notFound();
+
   const { data: project } = await supabase
     .from('projects')
     .select(
       `id, title, abstract, keywords, academic_year, status,
-       created_at, proposal_doc_url,
+       created_at, proposal_doc_url, group_id,
        supervisor:supervisor_id(full_name, email)`
     )
     .eq('id', params.id)
-    .eq('created_by', user.id)
     .single();
 
   if (!project) notFound();
@@ -225,9 +235,10 @@ export default async function StudentProjectDetail({
           </section>
         )}
 
-        {/* ── Project chat ── */}
+        {/* ── Group / Project chat ── */}
         <ProjectChat
-          projectId={project.id}
+          groupId={project.group_id ?? undefined}
+          projectId={project.group_id ? undefined : project.id}
           currentUserId={user.id}
           isSupervisor={false}
         />

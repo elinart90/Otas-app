@@ -5,6 +5,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Logo } from '@/components/layout/logo';
 import { registerAction, type RegisterState } from './actions';
+import { getStudentLevelLabel, isFinalYear } from '@/lib/student-level';
 
 export type ProgrammeOption = { id: string; name: string; code: string | null };
 export type DepartmentOption = {
@@ -13,9 +14,13 @@ export type DepartmentOption = {
   code: string | null;
   programmes: ProgrammeOption[];
 };
+export type FacultyOption = {
+  name: string;
+  departments: DepartmentOption[];
+};
 
 interface Props {
-  departments: DepartmentOption[];
+  faculties: FacultyOption[];
 }
 
 // ── Constants ────────────────────────────────────────────────
@@ -24,10 +29,10 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ROLES_NEEDING_DEPT = new Set(['student', 'supervisor', 'hod']);
 
 const PWD_CHECKS = [
-  { label: 'At least 8 characters',    ok: (p: string) => p.length >= 8 },
-  { label: 'One uppercase letter',      ok: (p: string) => /[A-Z]/.test(p) },
-  { label: 'One number',               ok: (p: string) => /[0-9]/.test(p) },
-  { label: 'One special character',    ok: (p: string) => /[^A-Za-z0-9]/.test(p) },
+  { label: 'At least 8 characters',  ok: (p: string) => p.length >= 8 },
+  { label: 'One uppercase letter',    ok: (p: string) => /[A-Z]/.test(p) },
+  { label: 'One number',             ok: (p: string) => /[0-9]/.test(p) },
+  { label: 'One special character',  ok: (p: string) => /[^A-Za-z0-9]/.test(p) },
 ];
 
 // ── Types ────────────────────────────────────────────────────
@@ -39,6 +44,7 @@ type Fields = {
   role: string;
   indexNumber: string;
   staffId: string;
+  facultyName: string;
   departmentId: string;
   programmeId: string;
 };
@@ -81,8 +87,9 @@ function validate(f: Fields): Errors {
     err.confirmPassword = 'Passwords do not match';
   }
 
-  if (ROLES_NEEDING_DEPT.has(f.role) && !f.departmentId) {
-    err.departmentId = 'Please select a department';
+  if (ROLES_NEEDING_DEPT.has(f.role)) {
+    if (!f.facultyName) err.facultyName = 'Please select a faculty';
+    if (!f.departmentId) err.departmentId = 'Please select a department';
   }
 
   if (f.role === 'student') {
@@ -91,8 +98,6 @@ function validate(f: Fields): Errors {
     } else if (!INDEX_REGEX.test(f.indexNumber.trim())) {
       err.indexNumber = 'Format: FOE.41.008.001.22';
     }
-
-    // Only require programme once a department is chosen
     if (f.departmentId && !f.programmeId) {
       err.programmeId = 'Please select a programme';
     }
@@ -127,7 +132,7 @@ function inputClass(hasError: boolean) {
 }
 
 // ── Main component ───────────────────────────────────────────
-export function RegisterForm({ departments }: Props) {
+export function RegisterForm({ faculties }: Props) {
   const [state, action] = useFormState<RegisterState, FormData>(registerAction, undefined);
 
   const [fields, setFields] = useState<Fields>({
@@ -138,6 +143,7 @@ export function RegisterForm({ departments }: Props) {
     role: 'student',
     indexNumber: '',
     staffId: '',
+    facultyName: '',
     departmentId: '',
     programmeId: '',
   });
@@ -150,9 +156,12 @@ export function RegisterForm({ departments }: Props) {
 
   const isStudent = fields.role === 'student';
   const needsDept = ROLES_NEEDING_DEPT.has(fields.role);
+
+  // Derived lists for cascading selects
+  const selectedFaculty = faculties.find((f) => f.name === fields.facultyName) ?? null;
+  const departments = selectedFaculty?.departments ?? [];
   const programmes = departments.find((d) => d.id === fields.departmentId)?.programmes ?? [];
 
-  // show an error once the field is blurred OR submit was attempted
   const show = (name: keyof Fields) => submitAttempted || touched.has(name);
 
   const set =
@@ -161,13 +170,10 @@ export function RegisterForm({ departments }: Props) {
       const value = e.target.value;
       setFields((prev) => {
         const next = { ...prev, [name]: value };
-        if (name === 'role') {
-          next.departmentId = '';
-          next.programmeId = '';
-        }
-        if (name === 'departmentId') {
-          next.programmeId = '';
-        }
+        // Cascade resets
+        if (name === 'role') { next.facultyName = ''; next.departmentId = ''; next.programmeId = ''; }
+        if (name === 'facultyName') { next.departmentId = ''; next.programmeId = ''; }
+        if (name === 'departmentId') { next.programmeId = ''; }
         return next;
       });
     };
@@ -321,6 +327,17 @@ export function RegisterForm({ departments }: Props) {
               <p className="text-xs text-muted-foreground">
                 Format: FACULTY.XX.XXX.XXX.YY
               </p>
+              {(() => {
+                const label = getStudentLevelLabel(fields.indexNumber.trim());
+                if (!label) return null;
+                const final = isFinalYear(fields.indexNumber.trim());
+                return (
+                  <p className={`text-xs font-medium ${final ? 'text-success' : 'text-info'}`}>
+                    Detected: {label}
+                    {!final && ' — Tools access only until final year'}
+                  </p>
+                );
+              })()}
               {show('indexNumber') && <FieldError msg={errors.indexNumber} />}
             </div>
           )}
@@ -342,48 +359,72 @@ export function RegisterForm({ departments }: Props) {
             </div>
           )}
 
-          {/* Department — students, supervisors, HoDs */}
+          {/* ── Faculty / Department / Programme cascade ── */}
           {needsDept && (
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Department</label>
-              <select
-                name="departmentId"
-                value={fields.departmentId}
-                onChange={set('departmentId')}
-                onBlur={touch('departmentId')}
-                className={inputClass(show('departmentId') && !!errors.departmentId)}
-              >
-                <option value="">Select department…</option>
-                {departments.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}{d.code ? ` (${d.code})` : ''}
-                  </option>
-                ))}
-              </select>
-              {show('departmentId') && <FieldError msg={errors.departmentId} />}
-            </div>
-          )}
+            <>
+              {/* Step 1: Faculty */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Faculty / School</label>
+                {/* Hidden field so server action receives facultyName */}
+                <input type="hidden" name="facultyName" value={fields.facultyName} />
+                <select
+                  value={fields.facultyName}
+                  onChange={set('facultyName')}
+                  onBlur={touch('facultyName')}
+                  className={inputClass(show('facultyName') && !!errors.facultyName)}
+                >
+                  <option value="">Select faculty…</option>
+                  {faculties.map((f) => (
+                    <option key={f.name} value={f.name}>{f.name}</option>
+                  ))}
+                </select>
+                {show('facultyName') && <FieldError msg={errors.facultyName} />}
+              </div>
 
-          {/* Programme — students only, appears after dept is chosen */}
-          {isStudent && fields.departmentId && (
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">Programme</label>
-              <select
-                name="programmeId"
-                value={fields.programmeId}
-                onChange={set('programmeId')}
-                onBlur={touch('programmeId')}
-                className={inputClass(show('programmeId') && !!errors.programmeId)}
-              >
-                <option value="">Select programme…</option>
-                {programmes.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}{p.code ? ` (${p.code})` : ''}
-                  </option>
-                ))}
-              </select>
-              {show('programmeId') && <FieldError msg={errors.programmeId} />}
-            </div>
+              {/* Step 2: Department — appears after faculty chosen */}
+              {fields.facultyName && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Department</label>
+                  <select
+                    name="departmentId"
+                    value={fields.departmentId}
+                    onChange={set('departmentId')}
+                    onBlur={touch('departmentId')}
+                    className={inputClass(show('departmentId') && !!errors.departmentId)}
+                  >
+                    <option value="">Select department…</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}{d.code ? ` (${d.code})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {show('departmentId') && <FieldError msg={errors.departmentId} />}
+                </div>
+              )}
+
+              {/* Step 3: Programme — students only, appears after dept chosen */}
+              {isStudent && fields.departmentId && (
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Programme</label>
+                  <select
+                    name="programmeId"
+                    value={fields.programmeId}
+                    onChange={set('programmeId')}
+                    onBlur={touch('programmeId')}
+                    className={inputClass(show('programmeId') && !!errors.programmeId)}
+                  >
+                    <option value="">Select programme…</option>
+                    {programmes.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                  {show('programmeId') && <FieldError msg={errors.programmeId} />}
+                </div>
+              )}
+            </>
           )}
 
           {/* Server error */}
@@ -395,6 +436,7 @@ export function RegisterForm({ departments }: Props) {
 
           <SubmitButton />
         </form>
+
 
         <p className="mt-5 text-center text-sm text-muted-foreground">
           Already have an account?{' '}

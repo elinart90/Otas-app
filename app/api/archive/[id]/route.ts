@@ -22,14 +22,16 @@ export async function GET(
   const { data: project, error: projErr } = await supabase
     .from('projects')
     .select(
-      `id, title, abstract, keywords, academic_year, status,
+      `id, title, abstract, keywords, academic_year, status, group_id,
        programme:programme_id(name, code),
        author:created_by(full_name, index_number),
        supervisor:supervisor_id(full_name),
+       members:project_members(role_in_team, user:user_id(full_name, index_number)),
        archives:archives(id, archive_code, document_url, year)`
     )
     .eq('id', params.id)
     .eq('status', 'archived')
+    .eq('is_seed', false)
     .single();
 
   if (projErr || !project) {
