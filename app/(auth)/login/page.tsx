@@ -1,7 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useFormState, useFormStatus } from 'react-dom';
-import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Logo } from '@/components/layout/logo';
 import { loginAction, type LoginState } from './actions';
@@ -21,12 +21,19 @@ function SubmitButton() {
 
 export default function LoginPage() {
   const [state, action] = useFormState<LoginState, FormData>(loginAction, undefined);
-  const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get('redirect') ?? '';
+
+  // Read ?redirect= without useSearchParams to avoid the Suspense prerender error.
+  // window is only available after hydration, so useState + useEffect is the
+  // correct pattern for a pure client component that needs URL search params.
+  const [redirectUrl, setRedirectUrl] = useState('');
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const r = params.get('redirect') ?? '';
+    if (r.startsWith('/')) setRedirectUrl(r);
+  }, []);
 
   return (
     <main className="relative flex min-h-screen items-center justify-center px-4">
-      {/* Soft emerald backdrop */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10"
@@ -51,6 +58,7 @@ export default function LoginPage() {
           {redirectUrl && (
             <input type="hidden" name="redirectUrl" value={redirectUrl} />
           )}
+
           <div className="space-y-1.5">
             <label htmlFor="email" className="text-sm font-medium">
               Email
@@ -65,6 +73,7 @@ export default function LoginPage() {
               placeholder="you@umat.edu.gh"
             />
           </div>
+
           <div className="space-y-1.5">
             <label htmlFor="password" className="text-sm font-medium">
               Password
